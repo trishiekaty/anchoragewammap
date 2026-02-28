@@ -65,18 +65,18 @@
 
   .filter-btn.active { color: #fff !important; }
 
-  .filter-btn[data-venue="werewolf"] { border-color: #4CAF50; color: #4CAF50; }
-  .filter-btn[data-venue="werewolf"].active { background: #4CAF50; }
-  .filter-btn[data-venue="vampire"] { border-color: #E91E63; color: #E91E63; }
-  .filter-btn[data-venue="vampire"].active { background: #E91E63; }
-  .filter-btn[data-venue="changeling"] { border-color: #9C27B0; color: #9C27B0; }
-  .filter-btn[data-venue="changeling"].active { background: #9C27B0; }
-  .filter-btn[data-venue="hunter"] { border-color: #FF9800; color: #FF9800; }
-  .filter-btn[data-venue="hunter"].active { background: #FF9800; }
-  .filter-btn[data-venue="shared"] { border-color: #29B6F6; color: #29B6F6; }
-  .filter-btn[data-venue="shared"].active { background: #29B6F6; }
-  .filter-btn[data-venue="dangerous"] { border-color: #f44336; color: #f44336; }
-  .filter-btn[data-venue="dangerous"].active { background: #f44336; }
+  .filter-btn[data-venue="werewolf"] { border-color: #A0522D; color: #C07040; }
+  .filter-btn[data-venue="werewolf"].active { background: #A0522D; }
+  .filter-btn[data-venue="vampire"] { border-color: #DC143C; color: #E84060; }
+  .filter-btn[data-venue="vampire"].active { background: #DC143C; }
+  .filter-btn[data-venue="changeling"] { border-color: #2E8B57; color: #40B070; }
+  .filter-btn[data-venue="changeling"].active { background: #2E8B57; }
+  .filter-btn[data-venue="hunter"] { border-color: #00838F; color: #20A0B0; }
+  .filter-btn[data-venue="hunter"].active { background: #00838F; }
+  .filter-btn[data-venue="shared"] { border-color: #DAA520; color: #E0B840; }
+  .filter-btn[data-venue="shared"].active { background: #DAA520; color: #1a1a1a !important; }
+  .filter-btn[data-venue="dangerous"] { border-color: #DC143C; color: #E84060; background: rgba(26,26,26,0.5); }
+  .filter-btn[data-venue="dangerous"].active { background: #1a1a1a; border-color: #DC143C; }
 
   .filter-btn:hover { transform: translateY(-1px); filter: brightness(1.2); }
 
@@ -86,10 +86,8 @@
     z-index: 1;
   }
 
-  /* Dark map tiles */
   .leaflet-tile-pane { filter: saturate(0.3) brightness(0.7) contrast(1.1); }
 
-  /* Custom popup styling */
   .leaflet-popup-content-wrapper {
     background: #1a1a2e;
     border: 1px solid #2a5a3a;
@@ -141,7 +139,6 @@
     border-top: 1px solid #333;
   }
 
-  /* Legend */
   .legend {
     position: fixed;
     bottom: 16px;
@@ -201,11 +198,9 @@
     font-size: 0.65rem;
   }
 
-  /* Close button color fix */
   .leaflet-popup-close-button { color: #888 !important; }
   .leaflet-popup-close-button:hover { color: #fff !important; }
 
-  /* Attribution */
   .leaflet-control-attribution { background: rgba(26,26,46,0.8) !important; color: #666 !important; }
   .leaflet-control-attribution a { color: #7ec8a0 !important; }
 </style>
@@ -228,12 +223,12 @@
 
 <div class="legend">
   <div class="legend-title">Venues</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Werewolf (Trish)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div> Vampire (Jordan)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div> Changeling (Sean)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Hunter (Jackins/Evie)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#29B6F6"></div> Shared / Neutral</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#f44336"></div> Dangerous / Corrupted</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#A0522D"></div> Werewolf (Trish)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#DC143C"></div> Vampire (Jordan)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2E8B57"></div> Changeling (Sean)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00838F"></div> Hunter (Jackins/Evie)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#DAA520"></div> Shared / Neutral</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1a1a1a;border:2px solid #DC143C"></div> Dangerous / Corrupted</div>
 </div>
 
 <div class="stat-bar">
@@ -254,15 +249,29 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 const venueColors = {
-  werewolf: '#4CAF50',
-  vampire: '#E91E63',
-  changeling: '#9C27B0',
-  hunter: '#FF9800',
-  shared: '#29B6F6',
-  dangerous: '#f44336'
+  werewolf:  '#A0522D',
+  vampire:   '#DC143C',
+  changeling:'#2E8B57',
+  hunter:    '#00838F',
+  shared:    '#DAA520',
+  dangerous: '#1a1a1a'
 };
 
-function makeIcon(color, size = 12) {
+const dangerStroke = '#DC143C';
+
+function makeIcon(color, size, isDangerous) {
+  if (isDangerous) {
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<svg width="${size*2+4}" height="${size*2+4}" viewBox="0 0 ${size*2+4} ${size*2+4}">
+        <circle cx="${size+2}" cy="${size+2}" r="${size}" fill="${color}" fill-opacity="0.7" stroke="${dangerStroke}" stroke-width="2.5"/>
+        <circle cx="${size+2}" cy="${size+2}" r="${size*0.4}" fill="${dangerStroke}" fill-opacity="0.9"/>
+      </svg>`,
+      iconSize: [size*2+4, size*2+4],
+      iconAnchor: [size+2, size+2],
+      popupAnchor: [0, -size]
+    });
+  }
   return L.divIcon({
     className: 'custom-marker',
     html: `<svg width="${size*2+4}" height="${size*2+4}" viewBox="0 0 ${size*2+4} ${size*2+4}">
@@ -436,7 +445,7 @@ const locations = [
     features:"Longest highway tunnel in NA; controls Whittier access; Portage Glacier",
     supernatural:"Tunnel spirits; chokepoint energy; Cold War military resonance" },
 
-  // ═══ SHARED / NEUTRAL ═══
+  // ═══ SHARED ═══
   { name:"Ship Creek / Port of Anchorage", lat:61.2270, lng:-149.8830, venue:"shared", st:"All", shared:"Ancient compact",
     type:"Port – Neutral Ground", status:"Neutral (Protected)", spirit:"Commerce, travel, history, neutrality",
     features:"Salmon fishing; Dena'ina heritage site; railroad depot; First Salmon Ceremony",
@@ -462,7 +471,7 @@ const locations = [
     features:"Retreating glacier; visitor center; glacial lake; visible climate change",
     supernatural:"Ancient ice spirits; recession/loss energy; deep time resonance" },
 
-  // ═══ DANGEROUS / CORRUPTED ═══
+  // ═══ DANGEROUS ═══
   { name:"Government Hill / RD-13 Zone", lat:61.2340, lng:-149.8730, venue:"dangerous", st:"All (Marco coord.)", shared:"Cross-venue plot",
     type:"Corrupted – Military", status:"CORRUPTED", spirit:"Military corruption, dimensional tears",
     features:"Damaged Gauntlet; constant aurora anomalies; military presence; dimensional tears",
@@ -488,15 +497,17 @@ function createMarkers() {
     if (!venueVisibility[loc.venue]) return;
 
     const color = venueColors[loc.venue];
-    const size = loc.venue === 'dangerous' ? 16 : (loc.venue === 'shared' ? 10 : 12);
-    const icon = makeIcon(color, size);
+    const isDangerous = loc.venue === 'dangerous';
+    const size = isDangerous ? 16 : (loc.venue === 'shared' ? 10 : 12);
+    const icon = makeIcon(color, size, isDangerous);
 
-    const venueBgColor = color;
+    const popupColor = isDangerous ? dangerStroke : color;
+    const venueBg = isDangerous ? '#1a1a1a' : color;
     const sharedHtml = loc.shared ? `<div class="popup-shared">Also relevant to: ${loc.shared}</div>` : '';
 
     const popup = `
-      <div class="popup-name" style="color:${color}">${loc.name}</div>
-      <span class="popup-venue" style="background:${venueBgColor}">${loc.venue.toUpperCase()} — ${loc.st}</span>
+      <div class="popup-name" style="color:${popupColor}">${loc.name}</div>
+      <span class="popup-venue" style="background:${venueBg};${isDangerous ? 'border:1px solid '+dangerStroke : ''}">${loc.venue.toUpperCase()} — ${loc.st}</span>
       <div class="popup-section"><span class="popup-label">Type:</span> <span class="popup-value">${loc.type}</span></div>
       <div class="popup-section"><span class="popup-label">Status:</span> <span class="popup-value">${loc.status}</span></div>
       <div class="popup-section"><span class="popup-label">Resonance:</span> <span class="popup-value">${loc.spirit}</span></div>
