@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Last Frontier — Anchorage Venue Locations</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Source+Sans+3:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 50%, #162447 100%);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #2a5a3a;
+    flex-shrink: 0;
+    z-index: 1000;
+  }
+
+  header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    color: #7ec8a0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  header h1 span { color: #4a8a6a; font-weight: 400; }
+
+  .filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-btn {
+    padding: 5px 12px;
+    border: 2px solid;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    background: transparent;
+  }
+
+  .filter-btn.active { color: #fff !important; }
+
+  .filter-btn[data-venue="werewolf"] { border-color: #4CAF50; color: #4CAF50; }
+  .filter-btn[data-venue="werewolf"].active { background: #4CAF50; }
+  .filter-btn[data-venue="vampire"] { border-color: #E91E63; color: #E91E63; }
+  .filter-btn[data-venue="vampire"].active { background: #E91E63; }
+  .filter-btn[data-venue="changeling"] { border-color: #9C27B0; color: #9C27B0; }
+  .filter-btn[data-venue="changeling"].active { background: #9C27B0; }
+  .filter-btn[data-venue="hunter"] { border-color: #FF9800; color: #FF9800; }
+  .filter-btn[data-venue="hunter"].active { background: #FF9800; }
+  .filter-btn[data-venue="shared"] { border-color: #29B6F6; color: #29B6F6; }
+  .filter-btn[data-venue="shared"].active { background: #29B6F6; }
+  .filter-btn[data-venue="dangerous"] { border-color: #f44336; color: #f44336; }
+  .filter-btn[data-venue="dangerous"].active { background: #f44336; }
+
+  .filter-btn:hover { transform: translateY(-1px); filter: brightness(1.2); }
+
+  #map {
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+  }
+
+  /* Dark map tiles */
+  .leaflet-tile-pane { filter: saturate(0.3) brightness(0.7) contrast(1.1); }
+
+  /* Custom popup styling */
+  .leaflet-popup-content-wrapper {
+    background: #1a1a2e;
+    border: 1px solid #2a5a3a;
+    border-radius: 6px;
+    color: #e0e0e0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  .leaflet-popup-tip { background: #1a1a2e; }
+
+  .leaflet-popup-content {
+    margin: 12px 16px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 300px;
+  }
+
+  .popup-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #333;
+  }
+
+  .popup-venue {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+
+  .popup-section { margin-bottom: 6px; }
+  .popup-label { font-weight: 600; color: #7ec8a0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .popup-value { color: #ccc; }
+
+  .popup-shared {
+    font-size: 0.75rem;
+    color: #888;
+    font-style: italic;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #333;
+  }
+
+  /* Legend */
+  .legend {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(26, 26, 46, 0.92);
+    border: 1px solid #2a5a3a;
+    border-radius: 6px;
+    padding: 10px 14px;
+    z-index: 1000;
+    font-size: 0.75rem;
+  }
+
+  .legend-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    color: #7ec8a0;
+    margin-bottom: 6px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .stat-bar {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: rgba(26, 26, 46, 0.92);
+    border: 1px solid #2a5a3a;
+    border-radius: 6px;
+    padding: 10px 14px;
+    z-index: 1000;
+    font-size: 0.75rem;
+    text-align: right;
+  }
+
+  .stat-bar .count {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    color: #7ec8a0;
+  }
+
+  .stat-bar .label {
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.65rem;
+  }
+
+  /* Close button color fix */
+  .leaflet-popup-close-button { color: #888 !important; }
+  .leaflet-popup-close-button:hover { color: #fff !important; }
+
+  /* Attribution */
+  .leaflet-control-attribution { background: rgba(26,26,46,0.8) !important; color: #666 !important; }
+  .leaflet-control-attribution a { color: #7ec8a0 !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>The Last Frontier <span>— Anchorage Venue Map</span></h1>
+  <div class="filters">
+    <button class="filter-btn active" data-venue="werewolf" onclick="toggleVenue('werewolf')">🐺 Werewolf</button>
+    <button class="filter-btn active" data-venue="vampire" onclick="toggleVenue('vampire')">🦇 Vampire</button>
+    <button class="filter-btn active" data-venue="changeling" onclick="toggleVenue('changeling')">🦋 Changeling</button>
+    <button class="filter-btn active" data-venue="hunter" onclick="toggleVenue('hunter')">🔫 Hunter</button>
+    <button class="filter-btn active" data-venue="shared" onclick="toggleVenue('shared')">⚖️ Shared</button>
+    <button class="filter-btn active" data-venue="dangerous" onclick="toggleVenue('dangerous')">☠️ Dangerous</button>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div class="legend">
+  <div class="legend-title">Venues</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Werewolf (Trish)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div> Vampire (Jordan)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div> Changeling (Sean)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Hunter (Jackins/Evie)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#29B6F6"></div> Shared / Neutral</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f44336"></div> Dangerous / Corrupted</div>
+</div>
+
+<div class="stat-bar">
+  <div class="count" id="visible-count">0</div>
+  <div class="label">Locations Shown</div>
+</div>
+
+<script>
+const map = L.map('map', {
+  center: [61.18, -149.88],
+  zoom: 11,
+  zoomControl: true,
+  attributionControl: true
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+const venueColors = {
+  werewolf: '#4CAF50',
+  vampire: '#E91E63',
+  changeling: '#9C27B0',
+  hunter: '#FF9800',
+  shared: '#29B6F6',
+  dangerous: '#f44336'
+};
+
+function makeIcon(color, size = 12) {
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<svg width="${size*2+4}" height="${size*2+4}" viewBox="0 0 ${size*2+4} ${size*2+4}">
+      <circle cx="${size+2}" cy="${size+2}" r="${size}" fill="${color}" fill-opacity="0.35" stroke="${color}" stroke-width="2"/>
+      <circle cx="${size+2}" cy="${size+2}" r="${size*0.4}" fill="${color}" fill-opacity="0.9"/>
+    </svg>`,
+    iconSize: [size*2+4, size*2+4],
+    iconAnchor: [size+2, size+2],
+    popupAnchor: [0, -size]
+  });
+}
+
+const locations = [
+  // ═══ WEREWOLF ═══
+  { name:"Downtown Anchorage", lat:61.2178, lng:-149.8882, venue:"werewolf", st:"Trish", shared:"Vampire (Jordan)",
+    type:"Urban Core", status:"NPC (Sarah Nanuq)", spirit:"Commerce, tourism, modern development",
+    features:"Economic heart; Cook Inlet views; Anchorage Museum; Alaska Center for Performing Arts",
+    supernatural:"Strong commerce spirits; multiple moderate Loci" },
+  { name:"Mountain View", lat:61.2280, lng:-149.8370, venue:"werewolf", st:"Trish", shared:"Hunter (Jackins/Evie)",
+    type:"Urban – Diverse", status:"Contested / Dangerous", spirit:"Diversity, community resilience, struggle",
+    features:"Most diverse neighborhood in US; community gardens; Alaska Museum of Science & Nature",
+    supernatural:"Spiritually unstable; Wounded Gauntlet; Church of Luna presence" },
+  { name:"Spenard", lat:61.1920, lng:-149.9150, venue:"werewolf", st:"Trish", shared:"Vampire (Jordan)",
+    type:"Urban – Gritty", status:"Unclaimed", spirit:"Vice, aviation, transience, authenticity",
+    features:"Blue-collar; bars and nightlife; Native community; near airport; Lake Hood seaplane base",
+    supernatural:"Confused aviation spirits; transient energies; resilience spirits" },
+  { name:"Midtown", lat:61.1930, lng:-149.8780, venue:"werewolf", st:"Trish", shared:"Vampire (Jordan)",
+    type:"Urban – Suburban", status:"Unclaimed", spirit:"Strip malls, suburban anonymity",
+    features:"Shopping corridors; Moose's Tooth; Korean restaurants; central location",
+    supernatural:"Weak commerce Loci; corporate spirits; spiritually dull" },
+  { name:"South Addition", lat:61.2100, lng:-149.9010, venue:"werewolf", st:"Trish", shared:"",
+    type:"Residential", status:"Unclaimed", spirit:"Community, history, comfort",
+    features:"Tree-lined streets; Delaney Park; Westchester Lagoon; Coastal Trail access; historic homes",
+    supernatural:"Community spirits; Church of Luna established here" },
+  { name:"Eagle River", lat:61.3214, lng:-149.5680, venue:"werewolf", st:"Trish", shared:"Hunter (Jackins/Evie)",
+    type:"Suburban Gateway", status:"NPC (Catherine Morrison)", spirit:"Wilderness gateway, self-sufficiency",
+    features:"Gateway between city and wild; Glenn Hwy corridor; Eagle River Nature Center",
+    supernatural:"Strong nature spirits; border territory between city and wild" },
+  { name:"Turnagain Arm", lat:61.0200, lng:-149.7600, venue:"werewolf", st:"Trish", shared:"",
+    type:"Coastal – Remote", status:"NPC (Tom Begich)", spirit:"Tidal extremes, isolation, deadly beauty",
+    features:"2nd highest tides in world; bore tides; beluga viewing; Seward Highway",
+    supernatural:"Powerful tide and wind Loci; Tunraq territory" },
+  { name:"Kincaid Park", lat:61.1530, lng:-150.0150, venue:"werewolf", st:"Trish", shared:"",
+    type:"Coastal Wilderness", status:"Unclaimed", spirit:"Isolation, coastal power, wind",
+    features:"1,400+ acres on coastal bluff; cross-country ski trails; moose habitat",
+    supernatural:"Dangerous wind/coastal spirits; ONE OF THE SEVEN RITUAL SITES" },
+  { name:"Far North Bicentennial Park", lat:61.1700, lng:-149.7600, venue:"werewolf", st:"Trish", shared:"Changeling (Sean)",
+    type:"Urban Wilderness", status:"Unclaimed / Wild", spirit:"Wild within city, ancient, transition",
+    features:"4,000 acres; Alaska Zoo adjacent; Campbell Creek Science Center; extensive trails",
+    supernatural:"Strong nature Loci; Hedge gates throughout; too large for one pack" },
+  { name:"Earthquake Park", lat:61.1960, lng:-149.9690, venue:"werewolf", st:"Trish", shared:"All (Tur Option)",
+    type:"Memorial Park", status:"Tur Option #1", spirit:"Earth's power, destruction, transformation",
+    features:"1964 earthquake memorial; ground shifted 30+ feet; Cook Inlet overlook",
+    supernatural:"Gauntlet never recovered; transformation spirits; POSSIBLE RITUAL SITE" },
+  { name:"Flattop Mountain / Glen Alps", lat:61.1380, lng:-149.7070, venue:"werewolf", st:"Trish", shared:"",
+    type:"Alpine", status:"Tur Option #2", spirit:"Threshold, vision, boundary between worlds",
+    features:"Most-climbed mountain in Alaska; panoramic city + wilderness views",
+    supernatural:"Strong Loci; aurora visibility; threshold energy" },
+  { name:"Chugach State Park Borders", lat:61.1600, lng:-149.6000, venue:"werewolf", st:"Trish", shared:"",
+    type:"Wilderness Boundary", status:"Wild / Forbidden", spirit:"Primal, ancient, untamed",
+    features:"500,000 acres; bears, moose, wolves; glaciers; alpine terrain",
+    supernatural:"Ancient spirits; Tunraq territory; primal Loci; the Wound" },
+
+  // ═══ VAMPIRE ═══
+  { name:"Downtown Nightlife District", lat:61.2165, lng:-149.8850, venue:"vampire", st:"Jordan", shared:"Werewolf (Trish)",
+    type:"Bars / Restaurants", status:"Feeding Territory", spirit:"Feeding, tourism, social predation",
+    features:"Humpy's; Glacier Brewhouse; 49th State Brewing; tourist bars on 4th Ave",
+    supernatural:"Inebriation spirits; social predation energy; transient feeding" },
+  { name:"Hotel District", lat:61.2150, lng:-149.8920, venue:"vampire", st:"Jordan", shared:"",
+    type:"Hotels / Tourism", status:"Haven Territory", spirit:"Transience, anonymity, tourism",
+    features:"Captain Cook Hotel; Marriott; Hilton; convention district; seasonal flux",
+    supernatural:"Transient spirits; anonymity energy; seasonal population shift" },
+  { name:"Lake Hood Seaplane Base", lat:61.1800, lng:-149.9660, venue:"vampire", st:"Jordan", shared:"Werewolf (Trish)",
+    type:"Aviation – Unique", status:"Resource", spirit:"Travel, escape, transience",
+    features:"World's largest seaplane base; bush pilot culture; constant arrivals/departures",
+    supernatural:"Confused aviation spirits; travel/escape resonance" },
+  { name:"Ted Stevens International Airport", lat:61.1744, lng:-149.9964, venue:"vampire", st:"Jordan", shared:"Hunter (Jackins/Evie)",
+    type:"Transit Hub", status:"Gateway", spirit:"Global transit, cargo, military",
+    features:"International cargo hub; military flights; seasonal tourism; 24-hour ops",
+    supernatural:"Travel spirits; cargo/commerce energy; military resonance" },
+  { name:"Dimond Center Mall", lat:61.1390, lng:-149.8830, venue:"vampire", st:"Jordan", shared:"",
+    type:"Commercial – Mall", status:"Feeding Ground", spirit:"Commerce, distraction, gathering",
+    features:"Largest mall in Alaska; movie theater; ice rink; anchor stores",
+    supernatural:"Consumption spirits; distraction energy; teenage gathering energy" },
+  { name:"5th Avenue Mall / Town Square", lat:61.2160, lng:-149.8870, venue:"vampire", st:"Jordan", shared:"",
+    type:"Commercial – Civic", status:"Elysium Potential", spirit:"Commerce, civic life, seasonal events",
+    features:"Shopping; Town Square Park; Fur Rondy; winter markets; Performing Arts Center",
+    supernatural:"Commerce and civic spirits; seasonal festival energy" },
+  { name:"Providence Alaska Medical Center", lat:61.1890, lng:-149.8190, venue:"vampire", st:"Jordan", shared:"Hunter (Jackins/Evie)",
+    type:"Medical", status:"Resource", spirit:"Suffering, healing, death, life",
+    features:"Largest hospital in Alaska; trauma center; research; medical professionals",
+    supernatural:"Illness and healing spirits; death resonance; technology spirits" },
+  { name:"Alaska Native Medical Center", lat:61.1930, lng:-149.8200, venue:"vampire", st:"Jordan", shared:"Changeling (Sean)",
+    type:"Medical – Cultural", status:"Resource", spirit:"Healing, indigenous medicine, community",
+    features:"Tribal health facility; traditional + modern medicine; Native community hub",
+    supernatural:"Healing spirits; ancestral energy; cultural resonance" },
+  { name:"Fairview", lat:61.2130, lng:-149.8600, venue:"vampire", st:"Jordan", shared:"",
+    type:"Urban – Mixed", status:"Low-Status Territory", spirit:"Grit, survival, proximity to power",
+    features:"Between downtown and Mountain View; bars; working class; Woodside Park",
+    supernatural:"Survival spirits; gritty resilience; buffer zone" },
+  { name:"Rogers Park", lat:61.2000, lng:-149.8340, venue:"vampire", st:"Jordan", shared:"",
+    type:"Residential", status:"Haven Area", spirit:"Quiet, medical proximity, suburban",
+    features:"Near Providence hospital; Russian Jack Springs Park; Valley of Moon Park",
+    supernatural:"Quiet community spirits; park energy; medical resonance" },
+  { name:"Girdwood / Alyeska Resort", lat:60.9420, lng:-149.1660, venue:"vampire", st:"Jordan", shared:"Changeling (Sean)",
+    type:"Resort – Mountain", status:"Satellite Territory", spirit:"Escape, beauty, seasonal transformation",
+    features:"Ski resort; temperate rainforest; tourist destination; 40mi from Anchorage",
+    supernatural:"Transformation spirits; seasonal change energy; mountain/forest power" },
+
+  // ═══ CHANGELING ═══
+  { name:"UAA Campus", lat:61.1900, lng:-149.8270, venue:"changeling", st:"Sean", shared:"Vampire (Jordan)",
+    type:"University", status:"Freehold Area", spirit:"Education, youth, nature, transformation",
+    features:"University campus; nature preserve; Goose Lake; student population; green spaces",
+    supernatural:"Hedge access via green spaces; educational spirits; youth energy" },
+  { name:"Alaska Native Heritage Center", lat:61.2320, lng:-149.7360, venue:"changeling", st:"Sean", shared:"Werewolf (Trish)",
+    type:"Cultural – Heritage", status:"Sacred / Neutral", spirit:"Sacred ground, tradition, deep history",
+    features:"Traditional structures from multiple cultures; outdoor gathering; cultural programs",
+    supernatural:"Strong spiritual resonance; ancestral energy; liminal space" },
+  { name:"Hillside Neighborhoods", lat:61.1500, lng:-149.7800, venue:"changeling", st:"Sean", shared:"Werewolf (Trish)",
+    type:"Residential – Upscale", status:"Resources", spirit:"Wealth, privacy, nature proximity",
+    features:"Luxury homes; forested lots; mountain views; near Bicentennial Park; wildlife corridor",
+    supernatural:"Nature spirits; boundary energy; privacy enables supernatural activity" },
+  { name:"Russian Jack Springs Park", lat:61.2130, lng:-149.8050, venue:"changeling", st:"Sean", shared:"",
+    type:"Urban Park", status:"Hedge Gate", spirit:"Hidden springs, nature within city, play",
+    features:"160 acres; natural springs; ski trails; community gardens; greenhouse",
+    supernatural:"Spring spirits; hidden water energy; goblin market potential" },
+  { name:"Chester Creek Greenbelt", lat:61.2030, lng:-149.8650, venue:"changeling", st:"Sean", shared:"Shared Path",
+    type:"Trail / Linear Park", status:"Hedge Trods", spirit:"Hidden paths, water, connection",
+    features:"Linear park following Chester Creek; connects neighborhoods; wildlife corridor",
+    supernatural:"Water spirits; path/journey energy; hidden spaces; Hedge trods" },
+  { name:"Valley of the Moon Park", lat:61.2040, lng:-149.8870, venue:"changeling", st:"Sean", shared:"",
+    type:"Community Park", status:"Gathering", spirit:"Imagination, childhood, hidden magic",
+    features:"Community park; playground; little league fields; creek access",
+    supernatural:"Imagination spirits; childhood wonder; fairy-ring resonance" },
+  { name:"Goose Lake", lat:61.1950, lng:-149.8150, venue:"changeling", st:"Sean", shared:"",
+    type:"Urban Lake", status:"Hedge Reflection", spirit:"Reflection, summer gathering, hidden depths",
+    features:"Urban lake; summer swimming; picnic area; surrounded by trees; near UAA",
+    supernatural:"Water/reflection spirits; summer court energy; seasonal transformation" },
+  { name:"Alaska Botanical Garden", lat:61.1720, lng:-149.7700, venue:"changeling", st:"Sean", shared:"",
+    type:"Garden – Cultivated", status:"Hedge-Adjacent", spirit:"Cultivation, beauty, nature tamed",
+    features:"110 acres; herb garden; wildflower trails; Campbell Creek; educational programs",
+    supernatural:"Cultivated nature spirits; beauty resonance; rare plant energy" },
+
+  // ═══ HUNTER ═══
+  { name:"JBER (Joint Base Elmendorf-Richardson)", lat:61.2540, lng:-149.8060, venue:"hunter", st:"Jackins & Evie", shared:"All (Off-Limits)",
+    type:"Military – Active Base", status:"Operations HQ", spirit:"Military readiness, Cold War legacy",
+    features:"Active military; Air Force + Army; 73,000 acres; restricted access",
+    supernatural:"Paranoid military spirits; VALKYRIE presence; RD-13 connection" },
+  { name:"Chugiak / Peters Creek", lat:61.3880, lng:-149.4870, venue:"hunter", st:"Jackins & Evie", shared:"Werewolf (Trish)",
+    type:"Suburban – Remote", status:"Safe Houses", spirit:"Self-sufficiency, survivalism, frontier mentality",
+    features:"Remote suburbs; survivalist culture; heavily armed population; Chugach foothills",
+    supernatural:"Survivalism spirits; frontier energy; watching the wild" },
+  { name:"Muldoon", lat:61.2210, lng:-149.7550, venue:"hunter", st:"Jackins & Evie", shared:"Vampire (Jordan)",
+    type:"Military-Adjacent", status:"Housing / Ops", spirit:"Military housing, transience, observation",
+    features:"Military-adjacent housing; Glenn Hwy access; diverse population; Tikahtnu Commons",
+    supernatural:"Military-residential spirits; watchfulness; transient energy" },
+  { name:"APD Headquarters", lat:61.1840, lng:-149.8240, venue:"hunter", st:"Jackins & Evie", shared:"",
+    type:"Law Enforcement", status:"Cover / Resource", spirit:"Law, order, investigation, authority",
+    features:"APD HQ; forensics; investigations; public interface",
+    supernatural:"Justice/order spirits; investigation energy; authority resonance" },
+  { name:"Merrill Field Airport", lat:61.2146, lng:-149.8460, venue:"hunter", st:"Jackins & Evie", shared:"",
+    type:"Small Airport", status:"Surveillance / Mobility", spirit:"Local aviation, surveillance, mobility",
+    features:"Municipal airport; small aircraft; flight training; emergency services",
+    supernatural:"Local aviation spirits; surveillance energy; quick deployment" },
+  { name:"Alaska Regional Hospital", lat:61.2020, lng:-149.8100, venue:"hunter", st:"Jackins & Evie", shared:"Vampire (Jordan)",
+    type:"Medical", status:"Evidence / Medical", spirit:"Trauma, emergency, evidence",
+    features:"Second major hospital; ER; unexplained trauma cases",
+    supernatural:"Emergency/trauma spirits; healing energy; evidence resonance" },
+  { name:"Portage Valley / Whittier Tunnel", lat:60.8370, lng:-148.9940, venue:"hunter", st:"Jackins & Evie", shared:"",
+    type:"Infrastructure – Remote", status:"Chokepoint", spirit:"Isolation, transit chokepoint, Cold War",
+    features:"Longest highway tunnel in NA; controls Whittier access; Portage Glacier",
+    supernatural:"Tunnel spirits; chokepoint energy; Cold War military resonance" },
+
+  // ═══ SHARED / NEUTRAL ═══
+  { name:"Ship Creek / Port of Anchorage", lat:61.2270, lng:-149.8830, venue:"shared", st:"All", shared:"Ancient compact",
+    type:"Port – Neutral Ground", status:"Neutral (Protected)", spirit:"Commerce, travel, history, neutrality",
+    features:"Salmon fishing; Dena'ina heritage site; railroad depot; First Salmon Ceremony",
+    supernatural:"Ancient compact: no faction controls; breaking neutrality invites consequences" },
+  { name:"Tony Knowles Coastal Trail", lat:61.1900, lng:-149.9450, venue:"shared", st:"All", shared:"No-hunting agreement",
+    type:"Trail – Linear", status:"Shared Space", spirit:"Movement, freedom, connection",
+    features:"11-mile trail; Westchester Lagoon to Kincaid Park; year-round human use",
+    supernatural:"Trail spirits enforce neutrality; no-hunting agreement" },
+  { name:"Anchorage Museum", lat:61.2160, lng:-149.8860, venue:"shared", st:"All", shared:"Neutral meeting ground",
+    type:"Cultural – Museum", status:"Neutral", spirit:"Knowledge, history, culture, preservation",
+    features:"Largest museum in Alaska; Alaska Native art; history; science exhibits",
+    supernatural:"Knowledge and memory spirits; cultural preservation energy" },
+  { name:"Eklutna Village / Spirit Houses", lat:61.4620, lng:-149.3670, venue:"shared", st:"All", shared:"Sacred ground",
+    type:"Cultural – Sacred", status:"Sacred Ground", spirit:"Death, ancestor worship, indigenous sacred",
+    features:"Dena'ina Athabascan village; spirit house cemetery; Russian Orthodox church",
+    supernatural:"Powerful ancestral spirits; death/memory energy; indigenous sacred resonance" },
+  { name:"Potter Marsh / Coastal Wildlife Refuge", lat:61.0640, lng:-149.8160, venue:"shared", st:"All", shared:"Nature preserve",
+    type:"Natural – Wetland", status:"Nature Preserve", spirit:"Migration, wetland, life cycles",
+    features:"Bird sanctuary; salmon viewing; boardwalk; seasonal migrations",
+    supernatural:"Migration spirits; wetland/life-cycle energy; seasonal transformation" },
+  { name:"Portage Glacier / Visitor Center", lat:60.7850, lng:-148.8400, venue:"shared", st:"All", shared:"Ancient territory",
+    type:"Natural – Glacial", status:"Ancient Territory", spirit:"Ancient ice, recession, deep time",
+    features:"Retreating glacier; visitor center; glacial lake; visible climate change",
+    supernatural:"Ancient ice spirits; recession/loss energy; deep time resonance" },
+
+  // ═══ DANGEROUS / CORRUPTED ═══
+  { name:"Government Hill / RD-13 Zone", lat:61.2340, lng:-149.8730, venue:"dangerous", st:"All (Marco coord.)", shared:"Cross-venue plot",
+    type:"Corrupted – Military", status:"CORRUPTED", spirit:"Military corruption, dimensional tears",
+    features:"Damaged Gauntlet; constant aurora anomalies; military presence; dimensional tears",
+    supernatural:"Gauntlet severely damaged; corrupted spirits; RD-13 facility influence" },
+  { name:"Deep Chugach – The Wound", lat:61.1000, lng:-149.4000, venue:"dangerous", st:"All (Endgame)", shared:"Endgame territory",
+    type:"Wild – Forbidden", status:"FORBIDDEN", spirit:"Primal, cosmic, ancient horror",
+    features:"True wilderness; only by bush plane; the Wound; seven ritual sites; frozen Carcosa",
+    supernatural:"The Wound; Tunraq territory; Carrion King's prison; endgame" },
+  { name:"Cook Inlet – The Deep", lat:61.1500, lng:-150.1500, venue:"dangerous", st:"All", shared:"Unknowable",
+    type:"Water – Unknowable", status:"UNKNOWABLE", spirit:"Ancient, cold, deep, unknowable",
+    features:"Extreme tides; mud flats that swallow people; beluga whales fleeing something",
+    supernatural:"Pre-human entities; something very old in the deep; tidal resonance" },
+];
+
+const venueVisibility = { werewolf:true, vampire:true, changeling:true, hunter:true, shared:true, dangerous:true };
+let markers = [];
+
+function createMarkers() {
+  markers.forEach(m => map.removeLayer(m.marker));
+  markers = [];
+
+  locations.forEach(loc => {
+    if (!venueVisibility[loc.venue]) return;
+
+    const color = venueColors[loc.venue];
+    const size = loc.venue === 'dangerous' ? 16 : (loc.venue === 'shared' ? 10 : 12);
+    const icon = makeIcon(color, size);
+
+    const venueBgColor = color;
+    const sharedHtml = loc.shared ? `<div class="popup-shared">Also relevant to: ${loc.shared}</div>` : '';
+
+    const popup = `
+      <div class="popup-name" style="color:${color}">${loc.name}</div>
+      <span class="popup-venue" style="background:${venueBgColor}">${loc.venue.toUpperCase()} — ${loc.st}</span>
+      <div class="popup-section"><span class="popup-label">Type:</span> <span class="popup-value">${loc.type}</span></div>
+      <div class="popup-section"><span class="popup-label">Status:</span> <span class="popup-value">${loc.status}</span></div>
+      <div class="popup-section"><span class="popup-label">Resonance:</span> <span class="popup-value">${loc.spirit}</span></div>
+      <div class="popup-section"><span class="popup-label">Features:</span> <span class="popup-value">${loc.features}</span></div>
+      <div class="popup-section"><span class="popup-label">Supernatural:</span> <span class="popup-value">${loc.supernatural}</span></div>
+      ${sharedHtml}
+    `;
+
+    const marker = L.marker([loc.lat, loc.lng], { icon }).bindPopup(popup, { maxWidth: 320 }).addTo(map);
+    markers.push({ marker, venue: loc.venue });
+  });
+
+  document.getElementById('visible-count').textContent = markers.length;
+}
+
+function toggleVenue(venue) {
+  venueVisibility[venue] = !venueVisibility[venue];
+  const btn = document.querySelector(`[data-venue="${venue}"]`);
+  btn.classList.toggle('active');
+  createMarkers();
+}
+
+createMarkers();
+</script>
+</body>
+</html>
